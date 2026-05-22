@@ -221,7 +221,7 @@
       margin-bottom: 4px;
       font-family: 'Lato', sans-serif;
     }
-    .tc-form input, .tc-form textarea {
+    .tc-form input, .tc-form textarea, .tc-form select {
       width: 100%;
       padding: 10px 13px;
       border: 1.5px solid #ddd;
@@ -231,9 +231,10 @@
       color: #333;
       margin-bottom: 11px;
       box-sizing: border-box;
+      background: #fff;
     }
     .tc-form textarea { resize: vertical; min-height: 60px; }
-    .tc-form input:focus, .tc-form textarea:focus {
+    .tc-form input:focus, .tc-form textarea:focus, .tc-form select:focus {
       border-color: #4a5a3a;
       outline: none;
     }
@@ -351,6 +352,7 @@
     var nomeVal = (document.getElementById('tc-nome') || {}).value || '';
     var foneVal = (document.getElementById('tc-fone') || {}).value || '';
     var endVal  = (document.getElementById('tc-end')  || {}).value || '';
+    var pagVal  = (document.getElementById('tc-pag')  || {}).value || '';
     var obsVal  = (document.getElementById('tc-obs')  || {}).value || '';
     var temCombo = cart.some(function(i){ return i.det && i.det.indexOf('marmitas à sua escolha') >= 0; });
 
@@ -381,6 +383,14 @@
         '<input id="tc-fone" type="tel" placeholder="(21) 9 0000-0000" value="' + esc(foneVal) + '">' +
         '<label>Endereço de entrega</label>' +
         '<input id="tc-end" type="text" placeholder="Rua, número, bairro…" value="' + esc(endVal) + '">' +
+        '<label>Forma de pagamento *</label>' +
+        '<select id="tc-pag">' +
+          '<option value="">Selecione…</option>' +
+          '<option value="Pix"' + (pagVal === 'Pix' ? ' selected' : '') + '>Pix</option>' +
+          '<option value="Cartão de crédito"' + (pagVal === 'Cartão de crédito' ? ' selected' : '') + '>Cartão de crédito</option>' +
+          '<option value="Cartão de débito"' + (pagVal === 'Cartão de débito' ? ' selected' : '') + '>Cartão de débito</option>' +
+          '<option value="Dinheiro"' + (pagVal === 'Dinheiro' ? ' selected' : '') + '>Dinheiro</option>' +
+        '</select>' +
         '<label>Observações / restrições alimentares</label>' +
         '<textarea id="tc-obs" placeholder="Ex: sem cebola, pratos do combo, alergias…">' + esc(obsVal) + '</textarea>' +
       '</div>' +
@@ -426,6 +436,13 @@
       if (el) el.focus();
       return;
     }
+    var pag  = ((document.getElementById('tc-pag')  || {}).value || '').trim();
+    if (!pag) {
+      alert('Por favor, selecione a forma de pagamento.');
+      var elp = document.getElementById('tc-pag');
+      if (elp) elp.focus();
+      return;
+    }
     var fone = ((document.getElementById('tc-fone') || {}).value || '').trim();
     var end  = ((document.getElementById('tc-end')  || {}).value || '').trim();
     var obs  = ((document.getElementById('tc-obs')  || {}).value || '').trim();
@@ -437,6 +454,7 @@
     var msg = '🛒 *PEDIDO MARMITAS — TOCA DO COELHO*\n\n';
     msg += '📦 *Itens:*\n' + linhas + '\n\n';
     msg += '💰 *Total estimado: ' + fmt(total()) + '*\n';
+    msg += '💳 *Pagamento:* ' + pag + '\n';
     msg += '👤 *Nome:* ' + nome + '\n';
     if (fone) msg += '📱 *Telefone:* ' + fone + '\n';
     if (end)  msg += '📍 *Endereço:* ' + end + '\n';
@@ -450,31 +468,35 @@
 
   // ── Injetar botões nos cards ───────────────────────────────
   function inject() {
-    // Marmitas (.card)
+    // Marmitas (.card) — IIFE no card para corrigir closure de var
     var cards = document.querySelectorAll('.card');
     for (var c = 0; c < cards.length; c++) {
-      var card = cards[c];
-      if (card.dataset.tcDone) continue;
-      card.dataset.tcDone = '1';
-      var nomeEl = card.querySelector('.card-nome');
-      if (!nomeEl) continue;
-      var nome = nomeEl.textContent.trim();
-      var boxes = card.querySelectorAll('.preco-box');
-      for (var b = 0; b < boxes.length; b++) {
-        (function(box){
-          var vol  = (box.querySelector('.preco-vol')  || {}).textContent || '';
-          var gram = (box.querySelector('.preco-gram') || {}).textContent || '';
-          var pStr = (box.querySelector('.preco-val')  || {}).textContent || '0';
-          var preco = parseP(pStr);
-          if (!preco) return;
-          var det = [vol.trim(), gram.trim()].filter(Boolean).join(' · ');
-          var btn = document.createElement('button');
-          btn.className = 'btn-add';
-          btn.textContent = '+ Adicionar';
-          btn.addEventListener('click', function(){ addItem(nome, det, preco, btn); });
-          box.appendChild(btn);
-        })(boxes[b]);
-      }
+      (function(card) {
+        if (card.dataset.tcDone) return;
+        card.dataset.tcDone = '1';
+        var nomeEl = card.querySelector('.card-nome');
+        if (!nomeEl) return;
+        var boxes = card.querySelectorAll('.preco-box');
+        for (var b = 0; b < boxes.length; b++) {
+          (function(box) {
+            var vol  = (box.querySelector('.preco-vol')  || {}).textContent || '';
+            var gram = (box.querySelector('.preco-gram') || {}).textContent || '';
+            var pStr = (box.querySelector('.preco-val')  || {}).textContent || '0';
+            var preco = parseP(pStr);
+            if (!preco) return;
+            var det = [vol.trim(), gram.trim()].filter(Boolean).join(' · ');
+            var btn = document.createElement('button');
+            btn.className = 'btn-add';
+            btn.textContent = '+ Adicionar';
+            btn.addEventListener('click', function() {
+              // lê o nome no momento do clique (evita closure stale)
+              var nome = nomeEl.textContent.trim();
+              addItem(nome, det, preco, btn);
+            });
+            box.appendChild(btn);
+          })(boxes[b]);
+        }
+      })(cards[c]);
     }
 
     // Combos (.combo-card)
