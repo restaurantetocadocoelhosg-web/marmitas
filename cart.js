@@ -378,6 +378,11 @@
     var formHtml = cart.length === 0 ? '' : (
       '<div class="tc-total"><span>Total estimado</span><span>' + fmt(total()) + '</span></div>' +
       (temCombo ? '<p class="tc-obs-combo">⚠️ Combos: informe os pratos desejados nas Observações.</p>' : '') +
+      '<div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px;">' +
+        '<div style="flex:1;height:1px;background:#e8e4dc;"></div>' +
+        '<span style="font-size:0.72rem;font-weight:700;color:#c8a84b;letter-spacing:1px;white-space:nowrap;font-family:Lato,sans-serif;">📋 DADOS DO PEDIDO</span>' +
+        '<div style="flex:1;height:1px;background:#e8e4dc;"></div>' +
+      '</div>' +
       '<div class="tc-form">' +
         '<label>Seu nome *</label>' +
         '<input id="tc-nome" type="text" placeholder="Como posso te chamar?" value="' + esc(nomeVal) + '">' +
@@ -496,7 +501,13 @@
     msg += '\n_Pedido via site · ' + new Date().toLocaleDateString('pt-BR') + '_';
 
     var url = 'https://wa.me/' + WPP + '?text=' + encodeURIComponent(msg);
-    window.open(url, '_blank');
+    var a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     closeDrawer();
   };
 
