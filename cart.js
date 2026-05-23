@@ -354,6 +354,8 @@
     var endVal  = (document.getElementById('tc-end')  || {}).value || '';
     var pagVal  = (document.getElementById('tc-pag')  || {}).value || '';
     var obsVal  = (document.getElementById('tc-obs')  || {}).value || '';
+    var dataVal = (document.getElementById('tc-data') || {}).value || '';
+    var horVal  = (document.getElementById('tc-hor')  || {}).value || 'entre 11h e 14h';
     var temCombo = cart.some(function(i){ return i.det && i.det.indexOf('marmitas à sua escolha') >= 0; });
 
     var itemsHtml = cart.length === 0
@@ -383,6 +385,15 @@
         '<input id="tc-fone" type="tel" placeholder="(21) 9 0000-0000" value="' + esc(foneVal) + '">' +
         '<label>Endereço de entrega</label>' +
         '<input id="tc-end" type="text" placeholder="Rua, número, bairro…" value="' + esc(endVal) + '">' +
+        '<label>📅 Data para entrega *</label>' +
+        '<input id="tc-data" type="date" value="' + esc(dataVal) + '" style="cursor:pointer;">' +
+        '<label>⏰ Horário preferido *</label>' +
+        '<select id="tc-hor">' +
+          '<option value="entre 11h e 14h"' + (horVal === 'entre 11h e 14h' ? ' selected' : '') + '>🕐 11h – 14h</option>' +
+          '<option value="entre 14h e 17h"' + (horVal === 'entre 14h e 17h' ? ' selected' : '') + '>🕑 14h – 17h</option>' +
+          '<option value="entre 17h e 20h"' + (horVal === 'entre 17h e 20h' ? ' selected' : '') + '>🕔 17h – 20h</option>' +
+        '</select>' +
+        '<p style="font-size:0.72rem;color:#aaa;margin:-6px 0 11px;font-family:Lato,sans-serif;line-height:1.4;">Mínimo 48h — podemos entregar antes! Confirmaremos o horário por WhatsApp.</p>' +
         '<label>Forma de pagamento *</label>' +
         '<select id="tc-pag">' +
           '<option value="">Selecione…</option>' +
@@ -409,6 +420,17 @@
       '</div>' +
       itemsHtml +
       formHtml;
+
+    // Define data mínima (48h a partir de agora)
+    setTimeout(function() {
+      var inp = document.getElementById('tc-data');
+      if (!inp) return;
+      var d = new Date();
+      d.setDate(d.getDate() + 2);
+      var min = d.toISOString().split('T')[0];
+      inp.min = min;
+      if (!inp.value || inp.value < min) inp.value = min;
+    }, 0);
   }
 
   function openDrawer() {
@@ -446,6 +468,15 @@
     var fone = ((document.getElementById('tc-fone') || {}).value || '').trim();
     var end  = ((document.getElementById('tc-end')  || {}).value || '').trim();
     var obs  = ((document.getElementById('tc-obs')  || {}).value || '').trim();
+    var data = ((document.getElementById('tc-data') || {}).value || '').trim();
+    var hor  = ((document.getElementById('tc-hor')  || {}).value || '').trim();
+    if (!data) {
+      alert('Por favor, escolha a data de entrega.');
+      var eld = document.getElementById('tc-data'); if (eld) eld.focus();
+      return;
+    }
+    var dp = data.split('-');
+    var dataFmt = dp[2] + '/' + dp[1] + '/' + dp[0];
 
     var linhas = cart.map(function(i){
       return '• ' + i.qty + 'x ' + i.nome + (i.det ? ' (' + i.det + ')' : '') + ' — ' + fmt(i.preco * i.qty);
@@ -454,11 +485,14 @@
     var msg = '🛒 *PEDIDO MARMITAS — TOCA DO COELHO*\n\n';
     msg += '📦 *Itens:*\n' + linhas + '\n\n';
     msg += '💰 *Total estimado: ' + fmt(total()) + '*\n';
+    msg += '📅 *Data para entrega:* ' + dataFmt + '\n';
+    msg += '⏰ *Horário preferido:* ' + hor + '\n';
     msg += '💳 *Pagamento:* ' + pag + '\n';
     msg += '👤 *Nome:* ' + nome + '\n';
     if (fone) msg += '📱 *Telefone:* ' + fone + '\n';
     if (end)  msg += '📍 *Endereço:* ' + end + '\n';
     if (obs)  msg += '📝 *Obs:* ' + obs + '\n';
+    msg += '\n⚠️ _Entregaremos dentro da janela de horário. Confirmaremos o horário exato por WhatsApp._';
     msg += '\n_Pedido via site · ' + new Date().toLocaleDateString('pt-BR') + '_';
 
     var url = 'https://wa.me/' + WPP + '?text=' + encodeURIComponent(msg);
