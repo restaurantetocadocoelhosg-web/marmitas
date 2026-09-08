@@ -5,6 +5,25 @@
   var WPP = '5521997912517';
   var cart = [];
 
+  // Antecedência mínima do pedido: 3 dias corridos (conta domingo), no fuso de
+  // Brasília. Antes era 48h e usava toISOString() (UTC) -- o corte pulava entre
+  // 2 e 3 dias conforme a hora, e o `min` do calendário não travava nada.
+  var DIAS_ANTECEDENCIA = 3;
+  function minDataEntregaISO() {
+    // Data de HOJE em São Paulo, montada pelos componentes locais (nada de UTC).
+    var agoraSP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    agoraSP.setHours(0, 0, 0, 0);
+    agoraSP.setDate(agoraSP.getDate() + DIAS_ANTECEDENCIA);
+    var y = agoraSP.getFullYear();
+    var m = ('0' + (agoraSP.getMonth() + 1)).slice(-2);
+    var d = ('0' + agoraSP.getDate()).slice(-2);
+    return y + '-' + m + '-' + d;
+  }
+  function dataBR(iso) {
+    var p = String(iso).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
   // ── Estilos ────────────────────────────────────────────────
   var css = `
     .btn-add {
@@ -398,7 +417,7 @@
           '<option value="entre 14h e 17h"' + (horVal === 'entre 14h e 17h' ? ' selected' : '') + '>🕑 14h – 17h</option>' +
           '<option value="entre 17h e 20h"' + (horVal === 'entre 17h e 20h' ? ' selected' : '') + '>🕔 17h – 20h</option>' +
         '</select>' +
-        '<p style="font-size:0.72rem;color:#aaa;margin:-6px 0 11px;font-family:Lato,sans-serif;line-height:1.4;">Mínimo 48h — podemos entregar antes! Confirmaremos o horário por WhatsApp.</p>' +
+        '<p style="font-size:0.72rem;color:#aaa;margin:-6px 0 11px;font-family:Lato,sans-serif;line-height:1.4;">Pedidos com no mínimo <strong>3 dias</strong> de antecedência. Confirmaremos o horário por WhatsApp.</p>' +
         '<label>Forma de pagamento *</label>' +
         '<select id="tc-pag">' +
           '<option value="">Selecione…</option>' +
@@ -426,13 +445,11 @@
       itemsHtml +
       formHtml;
 
-    // Define data mínima (48h a partir de agora)
+    // Define a data mínima (3 dias corridos, fuso de Brasília)
     setTimeout(function() {
       var inp = document.getElementById('tc-data');
       if (!inp) return;
-      var d = new Date();
-      d.setDate(d.getDate() + 2);
-      var min = d.toISOString().split('T')[0];
+      var min = minDataEntregaISO();
       inp.min = min;
       if (!inp.value || inp.value < min) inp.value = min;
     }, 0);
@@ -478,6 +495,15 @@
     if (!data) {
       alert('Por favor, escolha a data de entrega.');
       var eld = document.getElementById('tc-data'); if (eld) eld.focus();
+      return;
+    }
+    // TRAVA DE VERDADE: o `min` do calendário é só uma dica -- no computador dá
+    // pra digitar/escolher uma data mais cedo. Aqui é onde de fato barra.
+    var minEntrega = minDataEntregaISO();
+    if (data < minEntrega) {
+      var elDt = document.getElementById('tc-data');
+      alert('Os pedidos precisam de no mínimo 3 dias de antecedência.\n\nData mais próxima disponível: ' + dataBR(minEntrega) + '.');
+      if (elDt) { elDt.value = minEntrega; elDt.min = minEntrega; elDt.focus(); }
       return;
     }
     var dp = data.split('-');
